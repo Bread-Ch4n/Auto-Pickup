@@ -1,10 +1,15 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
+using IAmFuture.Data.Character;
+using IAmFuture.Data.Items;
+using IAmFuture.Gameplay.Character;
 using IAmFuture.Gameplay.InteractiveObjects.Actions;
 using IAmFuture.Gameplay.LootSystem;
 using IAmFuture.Gameplay.LootSystem.LootSets;
 using IAmFuture.Gameplay.Signals;
+using System.Collections;
+using System.Linq;
 using UnityEngine;
 using Zenject;
 using static UnityEngine.GameObject;
@@ -16,19 +21,18 @@ public class Plugin : BaseUnityPlugin
 {
     private static ManualLogSource _logger;
     readonly float _radius = 2.5f;
+    private bool _collectEnabled;
     private bool _collecting;
     private float _lastCollectionTime;
     private readonly float _collectionCooldown = 0.5f;
+    private readonly float _hugePickupDelay = 0.1f;
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.R)) _collecting = !_collecting;
-        if (_collecting && Time.time >= _lastCollectionTime + _collectionCooldown)
-        {
-            _lastCollectionTime = Time.time;
-
-            FindLootAroundPlayer();
-        }
+        if (Input.GetKeyDown(KeyCode.R)) _collectEnabled = !_collectEnabled;
+        if (!_collectEnabled || Time.time < _lastCollectionTime + _collectionCooldown) return;
+        _lastCollectionTime = Time.time;
+        StartCoroutine(FindLootAroundPlayer());
     }
 
     void collect_loot(GameObject objectGO, GameObject actorGO, PickupLootAction action)
@@ -47,25 +51,46 @@ public class Plugin : BaseUnityPlugin
     }
 
     // ReSharper disable Unity.PerformanceAnalysis
-    private void FindLootAroundPlayer()
+    private IEnumerator FindLootAroundPlayer()
     {
         GameObject player = FindWithTag("Player");
-        if (!player) return;
-
-        var allLootObjects = FindGameObjectsWithTag("Loot");
-        if (allLootObjects.Length == 0) return;
-
-        foreach (var loot in allLootObjects)
+        if (player)
         {
-            if (loot == null) continue;
-
-            if (Vector3.Distance(player.transform.position, loot.transform.position) <= _radius)
+            CharacterServicesProvider characterServiceProvider = player.GetComponent<CharacterServicesProvider>();
+            if (characterServiceProvider != null)
             {
-                Loot lootComponent = loot.GetComponent<Loot>();
-                if (lootComponent)
+                CarrierCharacter state = characterServiceProvider.StateMachine.GetState<CarrierCharacter>();
+                if (state != null)
                 {
-                    PickupLootAction action = (PickupLootAction)lootComponent.Actions[0];
-                    collect_loot(loot, player, action);
+                    bool isCarrying = state.IsActive;
+                    GameObject[] array = Physics.OverlapSphere(player.transform.position, _radius).Select(x => x.gameObject).Where(x => x != null && x.tag == (isCarrying ? "LootCarry" : "Loot")).ToArray();
+                    if (array.Length > 0)
+                    {
+                        foreach (GameObject gameObject in array)
+                        {
+                            if (gameObject?.name == null ) continue;
+                            if (isCarrying && gameObject.name.Contains(state.CarriedObject.name))
+                            {
+                                yield return new WaitForSeconds(_hugePickupDelay);
+                                state.TryToPickUpAdditionalObject(gameObject);
+                                break;
+                            }
+                            else if (!isCarrying)
+                            {
+                                Loot loot = gameObject.GetComponent<Loot>();
+                                if (loot)
+                                {
+                                    if (!player.TryGetComponent<CharacterInventory>(out var inventory)) break;
+                                    ItemObject item = loot.LootSet.Stack?.Object;
+                                    if (item == null) continue;
+                                    if (inventory.DoesItemRequireSpaceToBeAdded(item) && inventory.Storage.IsFull && !inventory.Storage.HasVacantStack(item)) break;
+                                    PickupLootAction pickupLootAction = (PickupLootAction)loot.Actions[0];
+                                    collect_loot(gameObject, player, pickupLootAction);
+                                }
+
+                            }
+                        }
+                    }
                 }
             }
         }
