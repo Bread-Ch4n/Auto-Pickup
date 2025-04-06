@@ -4,7 +4,7 @@
         <TargetFramework>net471</TargetFramework>
         <AssemblyName>Auto_Pickup</AssemblyName>
         <Product>Auto Pickup</Product>
-        <Version>1.0.0</Version>
+        <Version>1.0.3</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <RestoreAdditionalProjectSources>
@@ -27,14 +27,17 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Reference Include="IAmFuture">
-        <HintPath>..\..\..\..\..\SteamLibrary\steamapps\common\I Am Future\I Am Future_Data\Managed\IAmFuture.dll</HintPath>
-      </Reference>
-      <Reference Include="Sirenix.Serialization">
-        <HintPath>..\..\..\..\..\SteamLibrary\steamapps\common\I Am Future\I Am Future_Data\Managed\Sirenix.Serialization.dll</HintPath>
-      </Reference>
-      <Reference Include="Zenject">
-        <HintPath>..\..\..\..\..\SteamLibrary\steamapps\common\I Am Future\I Am Future_Data\Managed\Zenject.dll</HintPath>
-      </Reference>
+        <Reference Include="IAmFuture">
+            <HintPath>..\..\..\..\..\SteamLibrary\steamapps\common\I Am Future\I Am Future_Data\Managed\IAmFuture.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Sirenix.Serialization">
+            <HintPath>..\..\..\..\..\SteamLibrary\steamapps\common\I Am Future\I Am Future_Data\Managed\Sirenix.Serialization.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Zenject">
+            <HintPath>..\..\..\..\..\SteamLibrary\steamapps\common\I Am Future\I Am Future_Data\Managed\Zenject.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
     </ItemGroup>
 </Project>
